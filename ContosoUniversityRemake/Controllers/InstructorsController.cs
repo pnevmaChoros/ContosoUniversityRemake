@@ -20,12 +20,6 @@ namespace ContosoUniversityRemake.Controllers
             _context = context;
         }
 
-        // GET: Instructors
-        //public async Task<IActionResult> Index()
-        //{
-        //    return View(await _context.Instructors.ToListAsync());
-        //}
-
         public async Task<IActionResult> Index(int? id, int? courseID)
         {
             var viewModel = new InstructorIndexData();
@@ -251,8 +245,17 @@ namespace ContosoUniversityRemake.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var instructor = await _context.Instructors.FindAsync(id);
+            Instructor instructor = await _context.Instructors
+                .Include(i => i.CourseAssignments)
+                .SingleAsync(i => i.ID == id);
+
+            var departments = await _context.Departments
+                .Where(d => d.InstructorID == id)
+                .ToListAsync();
+            departments.ForEach(d => d.InstructorID = null);
+
             _context.Instructors.Remove(instructor);
+            
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
