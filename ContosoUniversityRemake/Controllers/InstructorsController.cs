@@ -76,6 +76,9 @@ namespace ContosoUniversityRemake.Controllers
         // GET: Instructors/Create
         public IActionResult Create()
         {
+            var instructor = new Instructor();
+            instructor.CourseAssignments = new List<CourseAssignment>();
+            PopulatedAssignedCourseData(instructor);
             return View();
         }
 
@@ -84,18 +87,57 @@ namespace ContosoUniversityRemake.Controllers
         // more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("ID,LastName,FirstMidName,HireDate")] Instructor instructor)
+        public async Task<IActionResult> Create([Bind("FirstMidName,HireDate,LastName,OfficeAssignment")] Instructor instructor, string[] selectedCourses)
         {
+            if(selectedCourses != null)
+            {
+                instructor.CourseAssignments = new List<CourseAssignment>();
+                foreach(var course in selectedCourses)
+                {
+                    var courseToAdd = new CourseAssignment
+                    {
+                        InstructorID = instructor.ID,
+                        CourseID = int.Parse(course)
+                    };
+                    instructor.CourseAssignments.Add(courseToAdd);
+                }
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(instructor);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+            PopulatedAssignedCourseData(instructor);
             return View(instructor);
         }
 
         // GET: Instructors/Edit/5
+        //public async Task<IActionResult> Edit(int? id)
+        //{
+        //    if (id == null)
+        //    {
+        //        return NotFound();
+        //    }
+
+        //    //var instructor = await _context.Instructors.FindAsync(id);
+        //    var instructor = await _context.Instructors
+        //        .Include(i => i.OfficeAssignment)
+        //        .Include(i => i.CourseAssignments)
+        //            .ThenInclude(i => i.Course)
+        //        .AsNoTracking()
+        //        .FirstOrDefaultAsync(m => m.ID == id);
+
+        //    if (instructor == null)
+        //    {
+        //        return NotFound();
+        //    }
+        //    PopulatedAssignedCourseData(instructor);
+        //    return View(instructor);
+        //}
+
+        //above is the older get edit method
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -103,11 +145,8 @@ namespace ContosoUniversityRemake.Controllers
                 return NotFound();
             }
 
-            //var instructor = await _context.Instructors.FindAsync(id);
             var instructor = await _context.Instructors
                 .Include(i => i.OfficeAssignment)
-                .Include(i => i.CourseAssignments)
-                    .ThenInclude(i => i.Course)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.ID == id);
 
@@ -115,7 +154,7 @@ namespace ContosoUniversityRemake.Controllers
             {
                 return NotFound();
             }
-            PopulatedAssignedCourseData(instructor);
+
             return View(instructor);
         }
 
@@ -138,9 +177,54 @@ namespace ContosoUniversityRemake.Controllers
             ViewData["Courses"] = viewModel;
         }
 
+
+        //[HttpPost, ActionName("Edit")]
+        //[ValidateAntiForgeryToken]
+        //public async Task<IActionResult> Edit(int? id, string[] selectedCourses)
+        //{
+        //    if (id == null)
+        //    {
+        //        return NotFound();
+        //    }
+
+        //    var instructorToUpdate = await _context.Instructors
+        //        .Include(i => i.OfficeAssignment)
+        //        .Include(i => i.CourseAssignments)
+        //            .ThenInclude(i => i.Course)
+        //        .FirstOrDefaultAsync(s => s.ID == id);
+
+        //    if (await TryUpdateModelAsync<Instructor>(
+        //        instructorToUpdate,
+        //        "",
+        //        i => i.FirstMidName, i => i.LastName, i => i.HireDate, i => i.OfficeAssignment))
+        //    {
+        //        if (String.IsNullOrWhiteSpace(instructorToUpdate.OfficeAssignment?.Location))
+        //        {
+        //            instructorToUpdate.OfficeAssignment = null;
+        //        }
+        //        UpdateInstructorCourses(selectedCourses, instructorToUpdate);
+        //        try
+        //        {
+        //            await _context.SaveChangesAsync();
+        //        }
+        //        catch (DbUpdateException /* ex */)
+        //        {
+        //            //Log the error (uncomment ex variable name and write a log.)
+        //            ModelState.AddModelError("", "Unable to save changes. " +
+        //                "Try again, and if the problem persists, " +
+        //                "see your system administrator.");
+        //        }
+        //        return RedirectToAction(nameof(Index));
+        //    }
+        //    UpdateInstructorCourses(selectedCourses, instructorToUpdate);
+        //    PopulatedAssignedCourseData(instructorToUpdate);
+        //    return View(instructorToUpdate);
+        //}
+
+        //above is the older post edit method
         [HttpPost, ActionName("Edit")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int? id, string[] selectedCourses)
+        public async Task<IActionResult> EditPost(int? id/*, string[] selectedCourses*/)
         {
             if (id == null)
             {
@@ -149,8 +233,8 @@ namespace ContosoUniversityRemake.Controllers
 
             var instructorToUpdate = await _context.Instructors
                 .Include(i => i.OfficeAssignment)
-                .Include(i => i.CourseAssignments)
-                    .ThenInclude(i => i.Course)
+                //.Include(i => i.CourseAssignments)
+                //    .ThenInclude(i => i.Course)
                 .FirstOrDefaultAsync(s => s.ID == id);
 
             if (await TryUpdateModelAsync<Instructor>(
@@ -162,7 +246,8 @@ namespace ContosoUniversityRemake.Controllers
                 {
                     instructorToUpdate.OfficeAssignment = null;
                 }
-                UpdateInstructorCourses(selectedCourses, instructorToUpdate);
+                await _context.SaveChangesAsync();
+                //UpdateInstructorCourses(selectedCourses, instructorToUpdate);
                 try
                 {
                     await _context.SaveChangesAsync();
@@ -176,8 +261,8 @@ namespace ContosoUniversityRemake.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            UpdateInstructorCourses(selectedCourses, instructorToUpdate);
-            PopulatedAssignedCourseData(instructorToUpdate);
+            //UpdateInstructorCourses(selectedCourses, instructorToUpdate);
+            //PopulatedAssignedCourseData(instructorToUpdate);
             return View(instructorToUpdate);
         }
 
